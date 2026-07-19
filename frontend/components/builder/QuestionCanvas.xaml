@@ -1,0 +1,316 @@
+"use client";
+
+import { useState } from "react";
+import ChoiceEditorModal from "./ChoiceEditorModal";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export default function QuestionCanvas({
+  question,
+  index,
+  onUpdate,
+}: {
+  question: any;
+  index: number;
+  onUpdate: (updated: any) => void;
+}) {
+  const [title, setTitle] = useState(question.title || "");
+  const [description, setDescription] = useState(question.description || "");
+  const [options, setOptions] = useState<string[]>(question.options || []);
+  const [showChoiceEditor, setShowChoiceEditor] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function saveField(fields: any) {
+    // Clear any existing error
+    setError(null);
+
+    // Validate dropdown options if present
+    if (question.type === "dropdown") {
+      const validationError = validateDropdown();
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+    }
+    const res = await fetch(
+      `${API_BASE}/forms/${question.form_id}/questions/${question.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      }
+    );
+    const updated = await res.json();
+    onUpdate(updated);
+  }
+
+  function addOption() {
+    const next = [...options, `Option ${options.length + 1}`];
+    setOptions(next);
+    saveField({ options: next });
+  }
+
+  function updateOption(i: number, value: string) {
+    const next = [...options];
+    next[i] = value;
+    setOptions(next);
+    saveField({ options: next });
+  }
+
+  function updateOptions(newOptions: string[]) {
+    setOptions(newOptions);
+    saveField({ options: newOptions });
+  }
+
+  function validateDropdown(): string | null {
+    if (question.type !== "dropdown") return null;
+    if (options.length < 2) {
+      return "Please add at least 2 options";
+    }
+    return null;
+  }
+
+  return (
+    <div className="w-full max-w-2xl">
+      <div className="mb-2 flex items-start gap-2">
+        <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded bg-gray-900 text-xs text-white">
+          {index + 1}
+        </span>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => saveField({ title })}
+          placeholder="Your question here. Recall information with @"
+          className="flex-1 bg-transparent text-2xl italic text-gray-700 outline-none placeholder:italic placeholder:text-gray-400"
+        />
+      </div>
+
+      <input
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        onBlur={() => saveField({ description })}
+        placeholder="Description (optional)"
+        className="mb-6 ml-8 w-full bg-transparent italic text-gray-400 outline-none"
+      />
+
+      <div className="ml-8">
+        {/* Text based inputs: short_text, long_text, number, email, phone, date */}
+        {["short_text", "long_text", "number", "email", "phone", "date"].includes(
+          question.type
+        ) && (
+          <input
+            disabled
+            placeholder={
+              question.type === "phone"
+                ? "+1 (xxx) xxx-xxxx"
+                : question.type === "date"
+                ? "yyyy-mm-dd"
+                : question.type === "number"
+                ? "Enter a number"
+                : question.type === "email"
+                ? (question.settings?.customPlaceholderEnabled && question.settings?.placeholder ? question.settings.placeholder : "name@example.com")
+                : question.type === "long_text"
+                ? "Long text answer..."
+                : "Type your answer here..."
+            }
+            className="w-full border-b border-gray-300 bg-transparent pb-2 text-lg text-gray-400 outline-none"
+          />
+        )}
+
+        {/* Multiple choice */}
+        {question.type === "multiple_choice" && (() => {
+          const settings = question.settings || {};
+          const includeOther = !!settings.includeOther;
+          const includeNone = !!settings.includeNone;
+          const layout = settings.layout || "horizontal"; // horizontal or vertical
+
+          const displayOptions = [
+            ...options,
+            ...(includeOther ? ["Other"] : []),
+            ...(includeNone ? ["None of the above"] : [])
+          ];
+
+          return (
+            <div className={layout === "vertical" ? "space-y-2" : "flex flex-wrap gap-2"}>
+              {displayOptions.map((option, optIndex) => (
+                <div
+                  key={optIndex}
+                  className="flex items-center gap-3 rounded-lg bg-gray-100 px-3 py-3"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded border bg-white text-xs font-medium">
+                    {String.fromCharCode(65 + optIndex)}
+                  </span>
+                  {optIndex < options.length ? (
+                    // Regular option: editable input
+                    <input
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...options];
+                        newOptions[optIndex] = e.target.value;
+                        setOptions(newOptions);
+                        saveField({ options: newOptions });
+                      }}
+                      className="flex-1 bg-transparent outline-none"
+                    />
+                  ) : (
+                    // Special option: static text
+                    <span className="text-sm text-gray-500">{option}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        <button
+          onClick={addOption}
+          className="mt-2 text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          + Add choice
+        </button>
+
+        {/* Dropdown */}
+        {question.type === "dropdown" && (
+          <>
+            <div className="relative">
+              <select
+                disabled
+                className="w-full border-b border-gray-300 bg-transparent pb-2 text-lg text-gray-400 outline-none"
+              >
+                <option disabled value="">Select an option</option>
+                {options.map((option, index) => (
+                  <option key={index} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => setShowChoiceEditor(true)}
+              className="mt-2 text-sm text-gray-500 underline hover:text-gray-700"
+            >
+              Edit choices ({options.length} options)
+            </button>
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          </>
+        )}
+
+        {/* Yes/No */}
+        {question.type === "yes_no" && (
+          <div className="space-y-2">
+            {["Yes", "No"].map((label) => (
+              <div
+                key={label}
+                className="flex items-center gap-3 rounded-lg bg-gray-100 px-3 py-3"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded border bg-white text-xs font-medium">
+                  {label[0]}
+                </span>
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Rating */}
+        {question.type === "rating" && (
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <span key={n} className="text-3xl text-gray-300">
+                ?
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Opinion scale (0-10) */}
+        {question.type === "opinion_scale" && (
+          <div className="flex items-center gap-4">
+            <span className="w-20">0 (Not at all)</span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              value={5}
+              onChange={(e) => {
+                // In a real implementation, we would store the selected value in state and save it.
+                // For now, we just update the question's settings or a temporary value.
+                // We'll skip saving for brevity.
+              }}
+              className="flex-1"
+            />
+            <span className="w-20">10 (Extremely)</span>
+          </div>
+        )}
+
+        {/* Statement */}
+        {question.type === "statement" && (
+          <textarea
+            value={description} // Reuse description state for simplicity
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={() => saveField({ description })}
+            placeholder="Enter your statement here..."
+            className="w-64 h-32 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          />
+        )}
+
+        {/* Welcome Screen */}
+        {question.type === "welcome_screen" && (
+          <div className="space-y-4">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => saveField({ title })}
+              placeholder="Welcome message"
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={() => saveField({ description })}
+              placeholder="Description (optional)"
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              value="Start" // We could have a separate state for button text, but for simplicity use title or description
+              onChange={(e) => {
+                // We don't have a separate state for button text in this component.
+                // In a real implementation, we would store this in the question's settings.
+              }}
+              placeholder="Button text"
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
+
+        {/* Ending Screen */}
+        {question.type === "ending_screen" && (
+          <div className="space-y-4">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => saveField({ title })}
+              placeholder="Ending message"
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={() => saveField({ description })}
+              placeholder="Description (optional)"
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
+      </div>
+      <ChoiceEditorModal
+        isOpen={showChoiceEditor}
+        onClose={() => setShowChoiceEditor(false)}
+        options={options}
+        onUpdate={updateOptions}
+        questionType="dropdown"
+      />
+    </div>
+  );
+}
+
