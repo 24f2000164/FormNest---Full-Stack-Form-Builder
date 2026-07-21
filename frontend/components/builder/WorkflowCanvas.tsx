@@ -124,29 +124,32 @@ export default function WorkflowCanvas({
   questions.forEach((q, i) => {
     const logic = q.settings?.logic || {};
     const rules: any[] = logic.rules || [];
-    let hasPath = false;
+    let hasOverridingPath = Boolean(logic.alwaysGoTo || logic.otherwise);
 
     rules.forEach((rule: any) => {
       if (rule.action === "go_to" && rule.target) {
         const toIdx = questions.findIndex((o) => o.id === Number(rule.target));
         if (toIdx !== -1) {
           connections.push({ fromIdx: i, toIdx, label: "rule", isBranch: true });
-          hasPath = true;
         }
       }
     });
 
     if (logic.otherwise) {
       const toIdx = questions.findIndex((o) => o.id === Number(logic.otherwise));
-      if (toIdx !== -1) { connections.push({ fromIdx: i, toIdx, label: "else", isBranch: true }); hasPath = true; }
+      if (toIdx !== -1) {
+        connections.push({ fromIdx: i, toIdx, label: "else", isBranch: true });
+      }
     }
 
     if (logic.alwaysGoTo) {
       const toIdx = questions.findIndex((o) => o.id === Number(logic.alwaysGoTo));
-      if (toIdx !== -1) { connections.push({ fromIdx: i, toIdx, label: "always", isBranch: true }); hasPath = true; }
+      if (toIdx !== -1) {
+        connections.push({ fromIdx: i, toIdx, label: "always", isBranch: true });
+      }
     }
 
-    if (!hasPath && i < questions.length - 1) {
+    if (!hasOverridingPath && i < questions.length - 1) {
       connections.push({ fromIdx: i, toIdx: i + 1, isBranch: false });
     }
   });
@@ -173,7 +176,13 @@ export default function WorkflowCanvas({
     const sign = diff > 0 ? -1 : 1;
     const cy = y1 + sign * arcH;
 
-    const d = `M ${x1} ${y1} C ${x1 + 60} ${cy}, ${x2 - 60} ${cy}, ${x2} ${y2}`;
+    // Control point offset scaled dynamically with distance to prevent crossing/squishing
+    const dx = x2 - x1;
+    const ctrlOffset = Math.min(60, Math.abs(dx) * 0.45);
+    const cp1x = x1 + (dx > 0 ? ctrlOffset : -ctrlOffset);
+    const cp2x = x2 - (dx > 0 ? ctrlOffset : -ctrlOffset);
+
+    const d = `M ${x1} ${y1} C ${cp1x} ${cy}, ${cp2x} ${cy}, ${x2} ${y2}`;
     return { d, isSimple: false };
   }
 

@@ -6,6 +6,7 @@ import { getFormBySlug, submitResponse, trackFormView, trackFormStart, trackForm
 import { validateAnswer } from "@/lib/validation";
 import PreviewProgressBar from "@/components/preview/PreviewProgressBar";
 import PreviewQuestionScreen from "@/components/preview/PreviewQuestionScreen";
+import { getNextStepIndex, calculateOutcomeEndingId } from "@/lib/logicEngine";
 
 type QuestionRead = {
   id: number;
@@ -27,6 +28,7 @@ type FormRead = {
   created_at: string;
   updated_at: string;
   questions: QuestionRead[];
+  settings?: Record<string, any> | null;
 };
 
 type Step = { kind: "question"; question: QuestionRead } | { kind: "end" };
@@ -42,6 +44,7 @@ export default function PublicFormPage() {
 
   const [form, setForm] = useState<FormRead | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
+  const [visitedHistory, setVisitedHistory] = useState<number[]>([]);
   const [phase, setPhase] = useState<"idle" | "leaving" | "entering">("idle");
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [answers, setAnswers] = useState<Record<number, AnswerEntry>>({});
@@ -123,13 +126,53 @@ export default function PublicFormPage() {
 
   const goNext = useCallback(() => {
     if (stepIndex >= steps.length - 1) return;
+
+    let nextStepIdx = stepIndex + 1;
+    const step = steps[stepIndex];
+    if (step?.kind === "question" && !SCREEN_TYPES.has(step.question.type) && form) {
+      const sortedQuestions = [...form.questions].sort((a, b) => a.order_index - b.order_index);
+      const sortedQCurrIdx = sortedQuestions.findIndex((q) => q.id === step.question.id);
+      if (sortedQCurrIdx !== -1) {
+        const nextQIdx = getNextStepIndex({
+          currentIndex: sortedQCurrIdx,
+          answers,
+          questions: sortedQuestions,
+        });
+        if (nextQIdx >= sortedQuestions.length) {
+          // Check outcome quiz mappings
+          const outcomeEndingId = calculateOutcomeEndingId(answers, sortedQuestions, form.settings);
+          if (outcomeEndingId) {
+            const endingStepIdx = steps.findIndex(
+              (s) => s.kind === "question" && s.question.id === outcomeEndingId
+            );
+            if (endingStepIdx !== -1) {
+              nextStepIdx = endingStepIdx;
+            } else {
+              nextStepIdx = steps.length - 1;
+            }
+          } else {
+            nextStepIdx = steps.length - 1; // End step
+          }
+        } else {
+          const targetQ = sortedQuestions[nextQIdx];
+          const targetStepIdx = steps.findIndex(
+            (s) => s.kind === "question" && s.question.id === targetQ.id
+          );
+          if (targetStepIdx !== -1) {
+            nextStepIdx = targetStepIdx;
+          }
+        }
+      }
+    }
+
     setDirection("forward");
     setPhase("leaving");
     window.setTimeout(() => {
       setPhase("entering");
-      setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+      setVisitedHistory((prev) => [...prev, stepIndex]);
+      setStepIndex(nextStepIdx);
     }, 260);
-  }, [stepIndex, steps.length]);
+  }, [stepIndex, steps, form, answers]);
 
   const goBack = useCallback(() => {
     if (stepIndex <= 0) return;
@@ -137,9 +180,15 @@ export default function PublicFormPage() {
     setPhase("leaving");
     window.setTimeout(() => {
       setPhase("entering");
-      setStepIndex((i) => Math.max(i - 1, 0));
+      if (visitedHistory.length > 0) {
+        const prevIndex = visitedHistory[visitedHistory.length - 1];
+        setVisitedHistory((prev) => prev.slice(0, -1));
+        setStepIndex(prevIndex);
+      } else {
+        setStepIndex((i) => Math.max(i - 1, 0));
+      }
     }, 260);
-  }, [stepIndex]);
+  }, [stepIndex, visitedHistory]);
 
   const nextStep = steps[stepIndex + 1];
   const isLastQuestion = useMemo(() => {
