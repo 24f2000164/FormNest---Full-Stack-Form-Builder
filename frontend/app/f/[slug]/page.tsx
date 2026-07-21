@@ -88,16 +88,17 @@ export default function PublicFormPage() {
   const steps: Step[] = useMemo(() => {
     if (!form) return [];
     const list: Step[] = [];
-    (form.questions || []).forEach((q) => list.push({ kind: "question", question: q }));
-    const last = form.questions[form.questions.length - 1];
+    const sortedQuestions = [...(form.questions || [])].sort((a, b) => a.order_index - b.order_index);
+    sortedQuestions.forEach((q) => list.push({ kind: "question", question: q }));
+    const last = sortedQuestions[sortedQuestions.length - 1];
     if (!last || last.type !== "ending_screen") list.push({ kind: "end" });
     return list;
   }, [form]);
 
-  const countedQuestions = useMemo(
-    () => (form?.questions || []).filter((q) => !SCREEN_TYPES.has(q.type)),
-    [form]
-  );
+  const countedQuestions = useMemo(() => {
+    const sorted = [...(form?.questions || [])].sort((a, b) => a.order_index - b.order_index);
+    return sorted.filter((q) => !SCREEN_TYPES.has(q.type));
+  }, [form]);
 
   const currentStep = steps[stepIndex];
 

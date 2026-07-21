@@ -22,6 +22,7 @@ import {
   leaveWorkspace,
   WorkspaceSummary
 } from "@/lib/api";
+import FeedbackModal from "@/components/share/FeedbackModal";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHelpDropdown, setShowHelpDropdown] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
 
   // Modals & Menu States
@@ -576,13 +578,12 @@ export default function DashboardPage() {
                 >
                   Community
                 </button>
-                <a
-                  href="mailto:bt23ece015@nituk.ac.in?subject=FormNest%20Feedback"
-                  onClick={() => setShowHelpDropdown(false)}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors border-y border-gray-100 bg-gray-50/50"
+                <button
+                  onClick={() => { setShowFeedbackModal(true); setShowHelpDropdown(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors border-y border-gray-100 bg-gray-50/50"
                 >
                   Give Feedback
-                </a>
+                </button>
                 <button
                   onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
                   className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
@@ -592,6 +593,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
           
           {/* User Initials Avatar */}
           <div 

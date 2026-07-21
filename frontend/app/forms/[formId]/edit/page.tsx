@@ -312,9 +312,9 @@ export default function BuilderPage() {
   }
 
   // Handle drag and drop for reordering questions
-  const updateQuestionOrder = async () => {
+  const updateQuestionOrder = async (nextQuestions: Question[]) => {
     if (!form) return;
-    const questionIds = questions.map((q) => q.id);
+    const questionIds = nextQuestions.map((q) => q.id);
     try {
       await fetch(`${API_BASE}/forms/${formId}/questions/reorder`, {
         method: "POST",
@@ -340,15 +340,13 @@ export default function BuilderPage() {
       return;
     }
     // Reorder in state
-    setQuestions((prev) => {
-      const newArray = [...prev];
-      const draggedItem = newArray.splice(dragIndex, 1)[0];
-      newArray.splice(index, 0, draggedItem);
-      return newArray;
-    });
+    const newArray = [...questions];
+    const draggedItem = newArray.splice(dragIndex, 1)[0];
+    newArray.splice(index, 0, draggedItem);
+    setQuestions(newArray);
     setDragIndex(null);
     // Update order on backend
-    updateQuestionOrder();
+    updateQuestionOrder(newArray);
   };
 
   async function handleMoveQuestionUp(index: number) {
@@ -360,12 +358,7 @@ export default function BuilderPage() {
     setQuestions(reordered);
     setActiveQuestionMenuId(null);
     // Persist to backend
-    const questionIds = reordered.map((q) => q.id);
-    await fetch(`${API_BASE}/forms/${formId}/questions/reorder`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(questionIds),
-    });
+    await updateQuestionOrder(reordered);
   }
 
   async function handleMoveQuestionDown(index: number) {
@@ -377,12 +370,7 @@ export default function BuilderPage() {
     setQuestions(reordered);
     setActiveQuestionMenuId(null);
     // Persist to backend
-    const questionIds = reordered.map((q) => q.id);
-    await fetch(`${API_BASE}/forms/${formId}/questions/reorder`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(questionIds),
-    });
+    await updateQuestionOrder(reordered);
   }
 
   async function handleDuplicateQuestion(question: Question) {
