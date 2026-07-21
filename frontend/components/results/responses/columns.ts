@@ -17,7 +17,7 @@ export type ResponseColumn = {
 // Responses table. A handful of common field titles (phone/name) get a
 // narrower width since they hold short values.
 function widthForQuestion(question: ResponseQuestion, isIdentity: boolean): number {
-  const title = question.title.toLowerCase();
+  const title = (question.title || "").toLowerCase();
   if (isIdentity) return 280;
   if (title.includes("phone")) return 180;
   if (title.includes("name")) return 200;

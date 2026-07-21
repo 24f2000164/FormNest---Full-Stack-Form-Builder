@@ -547,7 +547,7 @@ export default function LogicModal({
             return (
               <div
                 key={q.id}
-                className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden"
+                className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-visible"
               >
                 {/* Question header bar */}
                 <div className="flex items-center gap-2.5 px-5 py-3.5 bg-gray-50/60 border-b border-gray-100">
@@ -601,7 +601,7 @@ export default function LogicModal({
                       {rules.map((rule, ruleIdx) => (
                         <div
                           key={rule.id}
-                          className="rounded-xl border border-gray-150 bg-gray-50/50 overflow-hidden"
+                          className="rounded-xl border border-gray-150 bg-gray-50/50 overflow-visible"
                         >
                           {/* Conditions */}
                           <div className="p-4 space-y-3">

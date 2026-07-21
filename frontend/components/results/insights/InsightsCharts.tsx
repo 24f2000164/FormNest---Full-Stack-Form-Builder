@@ -270,9 +270,9 @@ export default function InsightsCharts({
           </div>
         </div>
 
-        <div className="relative h-[200px] pl-6 pt-4">
+        <div className="relative h-[200px] pt-4">
           {/* Gridlines */}
-          <div className="pointer-events-none absolute inset-0 flex flex-col-reverse justify-between pb-6 pl-6 pr-2">
+          <div className="pointer-events-none absolute inset-y-0 left-6 right-2 flex flex-col-reverse justify-between pb-6">
             {[0, 0.5, 1].map((ratio) => {
               const val = Math.round(ratio * maxTrendVal);
               return (
@@ -285,7 +285,7 @@ export default function InsightsCharts({
           </div>
 
           {/* Bars */}
-          <div className="relative flex h-full items-end gap-2 pb-6 pl-4 pr-2">
+          <div className="relative flex h-full items-end gap-2 pb-6 pl-6 pr-2">
             {activeTrend.map((pt, i) => {
               const heightPct = (pt.count / maxTrendVal) * 100;
               return (
@@ -302,7 +302,7 @@ export default function InsightsCharts({
                     />
                   </div>
                   <span className="text-[10px] text-gray-500 font-semibold truncate max-w-full mt-1.5" title={pt.label}>
-                    {pt.label}
+                    {(activeTrend.length <= 6 || i % Math.ceil(activeTrend.length / 5) === 0 || i === activeTrend.length - 1) ? pt.label : ""}
                   </span>
                 </div>
               );

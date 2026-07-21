@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./globals.css";
 
-export const metadata = { title: "Typeform Clone" };
+export const metadata = { title: "FormNest" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -253,6 +253,10 @@ export default function BuilderPage() {
       title: defaultTitles[type] || "",
     };
 
+    if (type === "multiple_choice" || type === "dropdown") {
+      payload.options = ["Choice 1", "Choice 2", "Choice 3"];
+    }
+
     if (type === "contact_info") {
       payload.settings = {
         fields: {
@@ -1907,7 +1911,7 @@ export default function BuilderPage() {
                         <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Button Text</label>
                         <input
                           type="text"
-                          value={selectedQuestion.settings?.buttonText ?? "Create a typeform"}
+                          value={selectedQuestion.settings?.buttonText ?? "Create a FormNest"}
                           maxLength={24}
                           placeholder="Button text"
                           onChange={(e) => {
@@ -1924,7 +1928,7 @@ export default function BuilderPage() {
                           className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                         />
                         <div className="text-[10px] text-gray-400 text-right">
-                          {(selectedQuestion.settings?.buttonText ?? "Create a typeform").length}/24
+                          {(selectedQuestion.settings?.buttonText ?? "Create a FormNest").length}/24
                         </div>
                       </div>
                     )}

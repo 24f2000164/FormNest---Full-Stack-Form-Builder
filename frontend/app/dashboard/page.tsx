@@ -42,6 +42,8 @@ export default function DashboardPage() {
   const [formsLoading, setFormsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHelpDropdown, setShowHelpDropdown] = useState(false);
+
 
   // Modals & Menu States
   const [activeMenuWorkspaceId, setActiveMenuWorkspaceId] = useState<number | null>(null);
@@ -305,13 +307,28 @@ export default function DashboardPage() {
 
   // Handle Form creation
   async function handleCreateForm() {
-    if (!selectedWorkspaceId) return;
+    let wsId = selectedWorkspaceId;
+    if (!wsId) {
+      // Create a default workspace first
+      try {
+        const newWs = await createWorkspace("My first workspace");
+        const wsSummary = { ...newWs, form_count: 0 };
+        setWorkspaces((prev) => [...prev, wsSummary]);
+        setSelectedWorkspaceId(newWs.id);
+        localStorage.setItem("dashboard_selected_workspace_id", newWs.id.toString());
+        wsId = newWs.id;
+      } catch (err) {
+        console.error(err);
+        alert("Failed to create workspace. Please try again.");
+        return;
+      }
+    }
     setSubmitting(true);
     try {
-      const form = await createForm("New form", selectedWorkspaceId);
+      const form = await createForm("New form", wsId);
       setWorkspaces((prev) =>
         prev.map((w) =>
-          w.id === selectedWorkspaceId ? { ...w, form_count: w.form_count + 1 } : w
+          w.id === wsId ? { ...w, form_count: w.form_count + 1 } : w
         )
       );
       router.push(`/forms/${form.id}/edit`);
@@ -535,12 +552,46 @@ export default function DashboardPage() {
             Brand kit
           </button>
           
-          <button className="text-gray-400 hover:text-gray-600 transition-colors">
-            {/* Help circle icon */}
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-            </svg>
-          </button>
+          <div className="relative flex items-center">
+            <button
+              onClick={() => setShowHelpDropdown(!showHelpDropdown)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {/* Help circle icon */}
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+              </svg>
+            </button>
+            {showHelpDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-40 rounded-xl border border-gray-150 bg-white shadow-xl py-1.5 z-50 text-left">
+                <button
+                  onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+                >
+                  Help center
+                </button>
+                <button
+                  onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+                >
+                  Community
+                </button>
+                <a
+                  href="mailto:bt23ece015@nituk.ac.in?subject=FormNest%20Feedback"
+                  onClick={() => setShowHelpDropdown(false)}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors border-y border-gray-100 bg-gray-50/50"
+                >
+                  Give Feedback
+                </a>
+                <button
+                  onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+                >
+                  Support
+                </button>
+              </div>
+            )}
+          </div>
           
           {/* User Initials Avatar */}
           <div 
@@ -738,7 +789,7 @@ export default function DashboardPage() {
                   <span className="text-gray-400 text-sm mr-2 select-none">🎙️</span>
                   <input
                     type="text"
-                    placeholder="Ask Typeform AI"
+                    placeholder="Ask FormNest AI"
                     className="flex-1 bg-transparent text-xs text-gray-700 outline-none placeholder-gray-400"
                   />
                   <button className="text-gray-400 hover:text-gray-600">

@@ -37,6 +37,9 @@ export default function ConnectCanvas({
   // Selected integration states
   const [connectedAccount, setConnectedAccount] = useState<GoogleAccount | null>(null);
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState("Sahil's Feedback Tracker");
+  const [sheetOption, setSheetOption] = useState<"create" | "existing">("create");
+  const [newSheetName, setNewSheetName] = useState("");
+  const [existingSheetUrl, setExistingSheetUrl] = useState("");
 
   // Load existing Google Sheets configuration from database on mount
   useEffect(() => {
@@ -48,6 +51,13 @@ export default function ConnectCanvas({
           email: gs.email || "24f2000164@ds.study.iitm.ac.in",
           avatarColor: "bg-indigo-600 text-white"
         });
+        if (gs.sheetOption === "existing") {
+          setSheetOption("existing");
+          setExistingSheetUrl(gs.spreadsheet || "");
+        } else {
+          setSheetOption("create");
+          setNewSheetName(gs.spreadsheet || "");
+        }
         setSelectedSpreadsheet(gs.spreadsheet || "Sahil's Feedback Tracker");
       }
     }
@@ -60,6 +70,9 @@ export default function ConnectCanvas({
 
   const handleSaveSheetsIntegration = async () => {
     if (!connectedAccount) return;
+    const finalSheetName = sheetOption === "create" 
+      ? (newSheetName.trim() || "Untitled Spreadsheet") 
+      : (existingSheetUrl.trim() || "Existing Spreadsheet Link");
     const nextSettings = {
       ...(form?.settings || {}),
       integrations: {
@@ -68,7 +81,8 @@ export default function ConnectCanvas({
           connected: true,
           name: connectedAccount.name,
           email: connectedAccount.email,
-          spreadsheet: selectedSpreadsheet,
+          sheetOption: sheetOption,
+          spreadsheet: finalSheetName,
         },
       },
     };
@@ -166,7 +180,7 @@ export default function ConnectCanvas({
                     <div className="space-y-4">
                       <h4 className="text-sm font-bold text-gray-900">Authorize a new Google Sheets account</h4>
                       <p className="text-xs text-gray-450 font-semibold leading-relaxed">
-                        Give Google Sheets permission to connect to your Typeform account.
+                        Give Google Sheets permission to connect to your FormNest account.
                       </p>
 
                       {/* Authorize Account Box */}
@@ -211,23 +225,56 @@ export default function ConnectCanvas({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <h4 className="text-sm font-bold text-gray-900">Select a spreadsheet</h4>
-                      <p className="text-xs text-gray-455 font-semibold leading-relaxed">
-                        Choose the spreadsheet where you want to send your form responses.
-                      </p>
-
-                      <div className="space-y-1">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wide">Spreadsheet</label>
-                        <select
-                          value={selectedSpreadsheet}
-                          onChange={(e) => setSelectedSpreadsheet(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white font-bold text-gray-700"
+                      <h4 className="text-sm font-bold text-gray-900">Where do you want to send your responses?</h4>
+                      
+                      {/* Tab Group Selector */}
+                      <div className="flex border border-gray-250 rounded-lg p-0.5 w-max bg-gray-50/60 font-semibold select-none text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setSheetOption("create")}
+                          className={`px-3 py-1.5 rounded-md transition-all ${sheetOption === "create" ? "bg-white text-gray-800 border border-gray-200 shadow-2xs font-bold" : "text-gray-400 hover:text-gray-650"}`}
                         >
-                          <option value="Sahil's Feedback Tracker">Sahil's Feedback Tracker</option>
-                          <option value="Form Submissions v1">Form Submissions v1</option>
-                          <option value="B2B Lead List 2026">B2B Lead List 2026</option>
-                        </select>
+                          Create new sheet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSheetOption("existing")}
+                          className={`px-3 py-1.5 rounded-md transition-all ${sheetOption === "existing" ? "bg-white text-gray-800 border border-gray-200 shadow-2xs font-bold" : "text-gray-400 hover:text-gray-650"}`}
+                        >
+                          Use existing
+                        </button>
                       </div>
+
+                      {sheetOption === "create" ? (
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                            Name your new spreadsheet
+                          </label>
+                          <input
+                            type="text"
+                            value={newSheetName}
+                            onChange={(e) => setNewSheetName(e.target.value)}
+                            placeholder="E.g. Product Survey Results"
+                            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white font-bold text-gray-700 font-semibold outline-none"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                            Spreadsheet URL
+                          </label>
+                          <input
+                            type="text"
+                            value={existingSheetUrl}
+                            onChange={(e) => setExistingSheetUrl(e.target.value)}
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white font-bold text-gray-700 font-semibold outline-none"
+                          />
+                          <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
+                            Paste the URL of your existing spreadsheet. Make sure your account has edit permissions.
+                          </p>
+                        </div>
+                      )}
 
                       <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex gap-2">
                         <span className="text-blue-500 text-xs">ℹ</span>
@@ -251,7 +298,7 @@ export default function ConnectCanvas({
                         <span className="text-base">👤</span>
                         <div className="text-left">
                           <h4 className="text-xs font-bold text-gray-800">Sign in with Google</h4>
-                          <p className="text-[10px] text-gray-450 font-semibold">Choose an account to continue to Typeform</p>
+                          <p className="text-[10px] text-gray-455 font-semibold">Choose an account to continue to FormNest</p>
                         </div>
                       </div>
 
@@ -360,7 +407,7 @@ export default function ConnectCanvas({
           {/* Left Panel: Search & Categories */}
           <div className="w-64 border-r border-gray-200 bg-white p-5 shrink-0 flex flex-col gap-6 text-left select-none">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-gray-800">Connect Typeform to your favorite apps</h3>
+              <h3 className="text-sm font-bold text-gray-800">Connect FormNest to your favorite apps</h3>
               <p className="text-[10px] text-gray-400 leading-relaxed font-semibold">
                 Create automated, efficient workflows that work for you.
               </p>
@@ -425,7 +472,7 @@ export default function ConnectCanvas({
               </p>
               <textarea
                 disabled
-                placeholder="E.g. When the typeform is submitted, check if leads exist in Salesforce and send details to Slack"
+                placeholder="E.g. When the form is submitted, check if leads exist in Salesforce and send details to Slack"
                 className="w-full h-16 rounded-xl border border-gray-200 bg-gray-50 p-3 text-[11px] outline-none placeholder-gray-400 resize-none font-semibold"
               />
               <div className="flex items-center justify-between pt-1">
@@ -507,14 +554,14 @@ export default function ConnectCanvas({
               )}
 
               {/* 2. Typeform Contacts Card */}
-              {("typeform contacts").includes(search.toLowerCase()) && (
+              {("formnest contacts").includes(search.toLowerCase()) && (
                 <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-3.5">
                     <span className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg shadow-xs select-none">
                       👤
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-gray-800">Typeform contacts</h4>
+                      <h4 className="text-xs font-bold text-gray-800">FormNest contacts</h4>
                       <p className="text-[10px] text-gray-400 leading-relaxed font-semibold max-w-md mt-0.5">
                         Map form responses to create or update your contacts and trigger automations.
                       </p>
@@ -522,7 +569,7 @@ export default function ConnectCanvas({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setComingSoonApp("Typeform contacts")}
+                    onClick={() => setComingSoonApp("FormNest contacts")}
                     className="px-4 py-1.5 bg-[#26212e] hover:bg-black text-white rounded-lg text-[10px] font-bold transition-all shadow-xs shrink-0"
                   >
                     Manage form mapping
@@ -574,7 +621,7 @@ export default function ConnectCanvas({
                         </span>
                       </h4>
                       <p className="text-[10px] text-gray-400 leading-relaxed font-semibold max-w-md mt-0.5">
-                        Discover how people find and interact with your typeform. Get the data you need to measure campaigns, improve conversions, and more.
+                        Discover how people find and interact with your form. Get the data you need to measure campaigns, improve conversions, and more.
                       </p>
                     </div>
                   </div>

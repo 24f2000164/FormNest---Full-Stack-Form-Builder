@@ -549,7 +549,7 @@ export default function QuestionCanvas({
                 type="button"
                 className="mt-4 px-6 py-2.5 bg-[#26212e] text-white rounded-lg text-xs font-bold shadow-md hover:bg-black/90 active:scale-95 transition-all select-none"
               >
-                {question.settings?.buttonText || "Create a typeform"}
+                {question.settings?.buttonText || "Create a FormNest"}
               </button>
             )}
           </div>

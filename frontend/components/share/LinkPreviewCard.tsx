@@ -37,7 +37,7 @@ export default function LinkPreviewCard({
           <p className="truncate text-sm font-semibold text-gray-900">{title || "New form"}</p>
           <p className="truncate text-sm text-gray-500">
             {description ||
-              "Turn data collection into an experience with Typeform. Create beautiful online forms, surveys, quizzes, and so much more."}
+              "Turn data collection into an experience with FormNest. Create beautiful online forms, surveys, quizzes, and so much more."}
           </p>
           <p className="truncate text-xs text-gray-400">{host}</p>
         </div>

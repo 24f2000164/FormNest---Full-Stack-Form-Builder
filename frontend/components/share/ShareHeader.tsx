@@ -1,15 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { LinkIcon } from "./icons";
 
-// Mirrors the Builder's top tab bar so navigating to /share doesn't feel
-// like leaving the app - but it's its own component, not a change to the
-// Builder page itself. Content/Workflow/Connect go back to the Builder
-// (Workflow/Connect aren't implemented there either, so they alert the
-// same "Coming soon" the Builder already uses); Results goes to the real
-// results page; Share is the active tab.
 export default function ShareHeader({ formId, title }: { formId: string; title: string }) {
+  const [showHelpDropdown, setShowHelpDropdown] = useState(false);
+
   return (
     <header className="flex items-center justify-between border-b px-6 py-3 text-sm">
       <div className="flex items-center gap-2 text-gray-500">
@@ -23,12 +20,12 @@ export default function ShareHeader({ formId, title }: { formId: string; title: 
         <Link href={`/forms/${formId}/edit`} className="pb-1 text-gray-400 hover:text-gray-600">
           Content
         </Link>
-        <button onClick={() => alert("Coming soon!")} className="pb-1 text-gray-400 hover:text-gray-600">
+        <Link href={`/forms/${formId}/edit?tab=workflow`} className="pb-1 text-gray-400 hover:text-gray-600">
           Workflow
-        </button>
-        <button onClick={() => alert("Coming soon!")} className="pb-1 text-gray-400 hover:text-gray-600">
+        </Link>
+        <Link href={`/forms/${formId}/edit?tab=connect`} className="pb-1 text-gray-400 hover:text-gray-600">
           Connect
-        </button>
+        </Link>
         <span className="border-b-2 border-gray-900 pb-1 text-gray-900">Share</span>
         <Link href={`/forms/${formId}/results`} className="pb-1 text-gray-400 hover:text-gray-600">
           Results
@@ -45,12 +42,44 @@ export default function ShareHeader({ formId, title }: { formId: string; title: 
         <button className="rounded-md bg-[#0f6b52] px-3 py-1.5 font-medium text-white hover:bg-[#0c5943]">
           View plans
         </button>
-        <button
-          className="flex h-7 w-7 items-center justify-center rounded-full border text-gray-400 hover:bg-gray-50"
-          aria-label="Help"
-        >
-          ?
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowHelpDropdown(!showHelpDropdown)}
+            className="flex h-7 w-7 items-center justify-center rounded-full border text-gray-450 hover:bg-gray-50 font-bold"
+            aria-label="Help"
+          >
+            ?
+          </button>
+          {showHelpDropdown && (
+            <div className="absolute right-0 top-full mt-2 w-40 rounded-xl border border-gray-150 bg-white shadow-xl py-1.5 z-50 text-left">
+              <button
+                onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+              >
+                Help center
+              </button>
+              <button
+                onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+              >
+                Community
+              </button>
+              <a
+                href="mailto:bt23ece015@nituk.ac.in?subject=FormNest%20Feedback"
+                onClick={() => setShowHelpDropdown(false)}
+                className="block w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors border-y border-gray-100 bg-gray-50/50"
+              >
+                Give Feedback
+              </a>
+              <button
+                onClick={() => { alert("Coming soon!"); setShowHelpDropdown(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors"
+              >
+                Support
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-xs font-medium text-white">
           {(title || "NF").slice(0, 2).toUpperCase()}
         </div>
