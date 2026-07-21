@@ -207,12 +207,22 @@ export default function BuilderPage() {
     setPublishing(true);
     try {
       const res = await fetch(`${API_BASE}/forms/${formId}/publish`, { method: "POST" });
-      if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+      if (!res.ok) {
+        let errMsg = `Request failed with status ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData && errData.detail) {
+            errMsg = errData.detail;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const updated = await res.json();
       setForm((prev) => (prev ? { ...prev, status: updated.status } : prev));
-    } catch (err) {
+      alert("Form published successfully!");
+    } catch (err: any) {
       console.error("Failed to publish form", err);
-      alert("This form needs at least one question before it can be published.");
+      alert(err.message || "An unexpected error occurred while publishing.");
     } finally {
       setPublishing(false);
     }
