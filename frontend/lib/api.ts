@@ -1,5 +1,68 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
+export function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (typeof window !== "undefined") {
+    const userId = localStorage.getItem("user_id");
+    if (userId) {
+      headers["X-User-Id"] = userId;
+      headers["Authorization"] = `Bearer ${userId}`;
+    }
+  }
+  return headers;
+}
+
+export type UserRead = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export type AuthResponse = {
+  status: string;
+  user: UserRead;
+  token: string;
+};
+
+export async function signupUser(name: string, email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to create account");
+  }
+  return res.json();
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Invalid email or password");
+  }
+  return res.json();
+}
+
+export async function googleAuthLogin(credential: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Google authentication failed");
+  }
+  return res.json();
+}
+
 export type FormSummary = {
   id: number;
   title: string;
@@ -43,7 +106,7 @@ export type QuestionUpdate = {
 };
 
 export async function listForms(): Promise<FormSummary[]> {
-  const res = await fetch(`${API_BASE}/forms`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/forms`, { cache: "no-store", headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to load forms");
   return res.json();
 }
@@ -51,7 +114,7 @@ export async function listForms(): Promise<FormSummary[]> {
 export async function createForm(title: string, workspaceId?: number): Promise<FormRead> {
   const res = await fetch(`${API_BASE}/forms`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ title, workspace_id: workspaceId }),
   });
   if (!res.ok) throw new Error("Failed to create form");
@@ -241,7 +304,7 @@ export type WorkspaceSummary = {
 };
 
 export async function listWorkspaces(): Promise<WorkspaceSummary[]> {
-  const res = await fetch(`${API_BASE}/workspaces`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/workspaces`, { cache: "no-store", headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to load workspaces");
   return res.json();
 }
@@ -249,7 +312,7 @@ export async function listWorkspaces(): Promise<WorkspaceSummary[]> {
 export async function createWorkspace(name: string): Promise<WorkspaceRead> {
   const res = await fetch(`${API_BASE}/workspaces`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {
@@ -262,7 +325,7 @@ export async function createWorkspace(name: string): Promise<WorkspaceRead> {
 export async function renameWorkspace(id: number, name: string): Promise<WorkspaceRead> {
   const res = await fetch(`${API_BASE}/workspaces/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {
@@ -275,6 +338,7 @@ export async function renameWorkspace(id: number, name: string): Promise<Workspa
 export async function deleteWorkspace(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/workspaces/${id}`, {
     method: "DELETE",
+    headers: getAuthHeaders(),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -291,7 +355,7 @@ export async function listWorkspaceForms(
   if (sortBy) query.set("sort_by", sortBy);
   if (sortOrder) query.set("sort_order", sortOrder);
   
-  const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/forms?${query.toString()}`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/forms?${query.toString()}`, { cache: "no-store", headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to load workspace forms");
   return res.json();
 }

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.database import Base, engine, SessionLocal
 from app import models, schemas
-from app.routers import forms, questions, responses, share, workspaces
+from app.routers import forms, questions, responses, share, workspaces, auth
 import json
 
 def migrate_db():
@@ -19,6 +19,15 @@ def migrate_db():
         if "settings" not in cols:
             conn.execute(text("ALTER TABLE forms ADD COLUMN settings JSON"))
             conn.commit()
+
+        cols_creators = [row[1] for row in conn.execute(text("PRAGMA table_info(creators)"))]
+        if "email" not in cols_creators:
+            conn.execute(text("ALTER TABLE creators ADD COLUMN email VARCHAR"))
+            conn.commit()
+        if "password_hash" not in cols_creators:
+            conn.execute(text("ALTER TABLE creators ADD COLUMN password_hash VARCHAR"))
+            conn.commit()
+
         cols_responses = [row[1] for row in conn.execute(text("PRAGMA table_info(responses)"))]
         if "view_id" not in cols_responses:
             conn.execute(text("ALTER TABLE responses ADD COLUMN view_id INTEGER"))
@@ -188,6 +197,7 @@ app.include_router(questions.router)
 app.include_router(responses.router)
 app.include_router(share.router)
 app.include_router(workspaces.router)
+app.include_router(auth.router)
 
 # Initialize database and seed data
 init_db()
@@ -196,3 +206,9 @@ init_db()
 @app.get("/")
 def root():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { signupUser } from "@/lib/api";
+import GoogleOAuthButton from "@/components/GoogleOAuthButton";
+
 export default function SignupPage() {
   const router = useRouter();
 
@@ -34,6 +37,7 @@ export default function SignupPage() {
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
   const [termsError, setTermsError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const validateName = (val: string) => {
     if (!val.trim()) return "Full name is required";
@@ -67,12 +71,14 @@ export default function SignupPage() {
     const val = e.target.value;
     setName(val);
     if (nameError) setNameError(validateName(val));
+    setServerError(null);
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setEmail(val);
     if (emailError) setEmailError(validateEmail(val));
+    setServerError(null);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,16 +86,19 @@ export default function SignupPage() {
     setPassword(val);
     if (passwordError) setPasswordError(validatePassword(val));
     if (confirmPasswordError) setConfirmPasswordError(validateConfirmPassword(confirmPassword, val));
+    setServerError(null);
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setConfirmPassword(val);
     if (confirmPasswordError) setConfirmPasswordError(validateConfirmPassword(val, password));
+    setServerError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
     
     const nErr = validateName(name);
     const eErr = validateEmail(email);
@@ -106,13 +115,22 @@ export default function SignupPage() {
     if (nErr || eErr || pErr || cpErr || tErr) return;
 
     setSubmitting(true);
-    setTimeout(() => {
-      localStorage.setItem("user_authenticated", "true");
-      localStorage.setItem("user_email", email);
-      localStorage.setItem("user_name", name);
-      router.push("/dashboard");
+    try {
+      // Clear any existing user session
+      localStorage.removeItem("user_authenticated");
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_email");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("dashboard_selected_workspace_id");
+
+      await signupUser(name, email, password);
+      // Redirect to login page with registered indicator
+      router.push(`/login?registered=true&email=${encodeURIComponent(email)}`);
+    } catch (err: any) {
+      setServerError(err.message || "Failed to create account. Please try again.");
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
 
@@ -167,6 +185,23 @@ export default function SignupPage() {
             <p className="text-xs text-gray-400 font-semibold">
               Start building beautiful forms today.
             </p>
+          </div>
+
+          {serverError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <span>⚠️</span> {serverError}
+            </div>
+          )}
+
+          {/* Google OAuth Sign Up */}
+          <GoogleOAuthButton mode="signup" onError={(err) => setServerError(err)} />
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-4">
+            <div className="border-t border-gray-200 w-full" />
+            <span className="bg-white px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest absolute">
+              Or continue with email
+            </span>
           </div>
 
           {/* Form */}

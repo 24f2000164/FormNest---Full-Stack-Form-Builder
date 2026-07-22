@@ -154,3 +154,34 @@ class WorkspaceInviteResponse(BaseModel):
     status: str
     message: str
     mock_sent: bool = False
+
+
+class UserCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., min_length=3, max_length=150)
+    password: str = Field(..., min_length=6)
+
+
+class UserLogin(BaseModel):
+    email: str = Field(..., min_length=3, max_length=150)
+    password: str = Field(..., min_length=1)
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
+class UserRead(BaseModel):
+    id: int
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+
+class AuthResponse(BaseModel):
+    status: str
+    user: UserRead
+    token: str
+

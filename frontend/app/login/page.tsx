@@ -4,29 +4,43 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { loginUser } from "@/lib/api";
+import GoogleOAuthButton from "@/components/GoogleOAuthButton";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  // Auth Redirect Guard
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isAuth = localStorage.getItem("user_authenticated") === "true";
-      if (isAuth) {
-        router.push("/dashboard");
-      }
-    }
-  }, [router]);
-
+  // Auth Redirect Guard & Query Params
+  const [justRegistered, setJustRegistered] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Validation States
+  // Validation & Server Error States
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isAuth = localStorage.getItem("user_authenticated") === "true";
+      if (isAuth) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("registered") === "true") {
+        setJustRegistered(true);
+      }
+      const prefillEmail = params.get("email");
+      if (prefillEmail) {
+        setEmail(prefillEmail);
+      }
+    }
+  }, [router]);
 
   const validateEmail = (val: string) => {
     if (!val.trim()) return "Email is required";
@@ -37,11 +51,6 @@ export default function LoginPage() {
 
   const validatePassword = (val: string) => {
     if (!val) return "Password is required";
-    if (val.length < 8) return "Password must be at least 8 characters";
-    if (!/[A-Z]/.test(val)) return "Must include at least one uppercase letter";
-    if (!/[a-z]/.test(val)) return "Must include at least one lowercase letter";
-    if (!/[0-9]/.test(val)) return "Must include at least one number";
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(val)) return "Must include at least one special character";
     return null;
   };
 
@@ -49,16 +58,19 @@ export default function LoginPage() {
     const val = e.target.value;
     setEmail(val);
     if (emailError) setEmailError(validateEmail(val));
+    setServerError(null);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setPassword(val);
     if (passwordError) setPasswordError(validatePassword(val));
+    setServerError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
     
     const eErr = validateEmail(email);
     const pErr = validatePassword(password);
@@ -69,13 +81,24 @@ export default function LoginPage() {
     if (eErr || pErr) return;
 
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const authRes = await loginUser(email, password);
+      
+      // Store session data in local storage
       localStorage.setItem("user_authenticated", "true");
-      localStorage.setItem("user_email", email);
-      localStorage.setItem("user_name", email.split("@")[0]);
+      localStorage.setItem("user_id", authRes.user.id.toString());
+      localStorage.setItem("user_email", authRes.user.email);
+      localStorage.setItem("user_name", authRes.user.name);
+      
+      // Reset selected workspace cache to allow auto-select of user's workspace
+      localStorage.removeItem("dashboard_selected_workspace_id");
+
       router.push("/dashboard");
+    } catch (err: any) {
+      setServerError(err.message || "Invalid email or password.");
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
 
@@ -130,6 +153,29 @@ export default function LoginPage() {
             <p className="text-xs text-gray-400 font-semibold">
               Please enter your credentials to access your account.
             </p>
+          </div>
+
+          {justRegistered && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs">
+              <span>🎉</span> Account created successfully! Please sign in with your email and password.
+            </div>
+          )}
+
+          {serverError && (
+            <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs">
+              <span>⚠️</span> {serverError}
+            </div>
+          )}
+
+          {/* Google OAuth Sign In */}
+          <GoogleOAuthButton mode="login" onError={(err) => setServerError(err)} />
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-4">
+            <div className="border-t border-gray-200 w-full" />
+            <span className="bg-white px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest absolute">
+              Or continue with email
+            </span>
           </div>
 
           {/* Form */}

@@ -1,22 +1,50 @@
 from datetime import datetime
 import os
 import smtplib
+import json
+import urllib.request
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app import models, schemas
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
 
+def extract_user_id(x_user_id: Optional[str], authorization: Optional[str]) -> int:
+    uid_str = x_user_id
+    if not uid_str and authorization and authorization.startswith("Bearer "):
+        uid_str = authorization.replace("Bearer ", "").strip()
+    if uid_str:
+        try:
+            return int(uid_str)
+        except ValueError:
+            pass
+    return 1
+
+
 @router.get("", response_model=List[schemas.WorkspaceSummary])
-def list_workspaces(db: Session = Depends(get_db)):
-    """List all workspaces with form counts."""
-    workspaces = db.query(models.Workspace).all()
+def list_workspaces(
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """List all workspaces belonging to the current user."""
+    user_id = extract_user_id(x_user_id, authorization)
+    workspaces = db.query(models.Workspace).filter(models.Workspace.owner_id == user_id).all()
+    
+    # Auto-create default workspace if user doesn't have any
+    if not workspaces:
+        ws = models.Workspace(name="My workspace", owner_id=user_id)
+        db.add(ws)
+        db.commit()
+        db.refresh(ws)
+        workspaces = [ws]
+
     result = []
     for w in workspaces:
         count = db.query(func.count(models.Form.id)).filter(models.Form.workspace_id == w.id).scalar()
@@ -32,18 +60,28 @@ def list_workspaces(db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=schemas.WorkspaceRead, status_code=status.HTTP_201_CREATED)
-def create_workspace(payload: schemas.WorkspaceCreate, db: Session = Depends(get_db)):
-    """Create a new workspace."""
+def create_workspace(
+    payload: schemas.WorkspaceCreate,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Create a new workspace for the current user."""
     name_clean = payload.name.strip()
     if not name_clean:
         raise HTTPException(status_code=400, detail="Workspace name is required")
 
-    # Validate duplicate name (case-insensitive)
-    existing = db.query(models.Workspace).filter(func.lower(models.Workspace.name) == name_clean.lower()).first()
+    user_id = extract_user_id(x_user_id, authorization)
+
+    # Validate duplicate name for this specific owner
+    existing = db.query(models.Workspace).filter(
+        models.Workspace.owner_id == user_id,
+        func.lower(models.Workspace.name) == name_clean.lower()
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Workspace name already exists")
 
-    ws = models.Workspace(name=name_clean, owner_id=1)
+    ws = models.Workspace(name=name_clean, owner_id=user_id)
     db.add(ws)
     db.commit()
     db.refresh(ws)
@@ -161,7 +199,9 @@ def get_workspace_forms(
 
 @router.post("/{workspace_id}/invite", response_model=schemas.WorkspaceInviteResponse)
 def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, db: Session = Depends(get_db)):
-    """Invite a user to a workspace via email. Send via SMTP if configured, else fallback to mock log."""
+    """Invite a user to a workspace via email.
+    Priority: 1) Resend API (HTTP, works on Render) -> 2) SMTP -> 3) Mock log fallback
+    """
     ws = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -173,27 +213,66 @@ def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, d
     # Construct invitation details
     frontend_base_url = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
     invite_url = f"{frontend_base_url}/invite?workspace_id={workspace_id}&email={email}"
-    
+
     subject = f"Invitation to join workspace '{ws.name}' on FormNest"
-    body = f"""
+    html_body = f"""
     <html>
-      <body style="font-family: sans-serif; color: #333; line-height: 1.6;">
-        <h2 style="color: #4f70db;">You've been invited!</h2>
-        <p>Hello,</p>
-        <p>You have been invited to collaborate on the workspace <strong>"{ws.name}"</strong> in FormNest.</p>
-        <p>Click the button below to accept the invitation and access the workspace:</p>
-        <p style="margin: 24px 0;">
-          <a href="{invite_url}" style="background-color: #26212e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Accept Invitation</a>
-        </p>
-        <p>Or copy and paste this URL into your browser:</p>
-        <p><a href="{invite_url}">{invite_url}</a></p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #888;">If you did not expect this invitation, you can safely ignore this email.</p>
+      <body style="font-family: sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #26212e, #4f70db); padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">FormNest</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0;">Workspace Invitation</p>
+        </div>
+        <div style="background: #f9f9f9; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #eee;">
+          <h2 style="color: #26212e;">You've been invited!</h2>
+          <p>Hello,</p>
+          <p>You have been invited to collaborate on the workspace <strong>"{ws.name}"</strong> in FormNest.</p>
+          <p>Click the button below to accept the invitation and get started:</p>
+          <p style="margin: 32px 0; text-align: center;">
+            <a href="{invite_url}" style="background-color: #26212e; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">Accept Invitation</a>
+          </p>
+          <p style="color: #888; font-size: 13px;">Or copy this link into your browser:</p>
+          <p style="background: #eee; padding: 10px; border-radius: 6px; word-break: break-all; font-size: 12px;">{invite_url}</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #aaa;">If you did not expect this invitation, you can safely ignore this email.</p>
+        </div>
       </body>
     </html>
     """
 
-    # Read SMTP credentials
+    # ── Method 1: Resend API (HTTPS – works on Render free tier) ──────────────
+    resend_api_key = os.environ.get("RESEND_API_KEY")
+    if resend_api_key:
+        try:
+            resend_from = os.environ.get("RESEND_FROM_EMAIL", "FormNest <onboarding@resend.dev>")
+            payload = json.dumps({
+                "from": resend_from,
+                "to": [email],
+                "subject": subject,
+                "html": html_body,
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                "https://api.resend.com/emails",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                resp_data = json.loads(resp.read().decode())
+                print(f"Resend email sent successfully. ID: {resp_data.get('id')}")
+                return schemas.WorkspaceInviteResponse(
+                    status="success",
+                    message=f"Invitation email sent successfully to {email}.",
+                    mock_sent=False
+                )
+        except Exception as e:
+            print(f"Resend API error: {str(e)}")
+            # Fall through to SMTP
+
+    # ── Method 2: SMTP (may be blocked on Render free tier) ──────────────────
     smtp_host = os.environ.get("SMTP_HOST") or os.environ.get("MAIL_SERVER")
     smtp_port = os.environ.get("SMTP_PORT") or os.environ.get("MAIL_PORT")
     smtp_user = os.environ.get("SMTP_USERNAME") or os.environ.get("MAIL_USERNAME")
@@ -208,10 +287,9 @@ def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, d
             msg["Subject"] = subject
             msg["From"] = f"{smtp_from_name} <{smtp_from}>"
             msg["To"] = email
-            msg.attach(MIMEText(body, "html"))
+            msg.attach(MIMEText(html_body, "html"))
 
             port = int(smtp_port)
-            # Use SSL/TLS or standard connection based on port
             if port == 465:
                 server = smtplib.SMTP_SSL(smtp_host, port, timeout=10)
             else:
@@ -231,21 +309,19 @@ def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, d
                 mock_sent=False
             )
         except Exception as e:
-            # If real sending fails, we log it and fallback to mock return so user's execution flows correctly
             print(f"SMTP error, falling back to mock: {str(e)}")
-            pass
 
-    # Mock Fallback Mode (prints to console, logs output, and returns success)
+    # ── Method 3: Mock fallback log ───────────────────────────────────────────
     print("\n" + "="*50)
     print("MOCK EMAIL INVITATION LOG")
     print(f"To: {email}")
     print(f"Subject: {subject}")
-    print(f"Body: \n{body}")
+    print(f"Invite URL: {invite_url}")
     print("="*50 + "\n")
 
     return schemas.WorkspaceInviteResponse(
         status="success",
-        message="Workspace invitation registered successfully (Mock mode: details printed to backend console).",
+        message="Workspace invitation registered (mock mode – set RESEND_API_KEY to send real emails).",
         mock_sent=True
     )
 

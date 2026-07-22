@@ -92,10 +92,16 @@ export default function DashboardPage() {
 
   // Load Workspaces on mount
   useEffect(() => {
-    // Check mock authentication
+    // Check authentication guard
     if (typeof window !== "undefined") {
       const isAuth = localStorage.getItem("user_authenticated") === "true";
-      if (!isAuth) {
+      const userId = localStorage.getItem("user_id");
+      if (!isAuth || !userId) {
+        localStorage.removeItem("user_authenticated");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user_email");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("dashboard_selected_workspace_id");
         router.push("/login");
         return;
       }
@@ -606,7 +612,11 @@ export default function DashboardPage() {
             onClick={() => {
               if (confirm("Are you sure you want to log out?")) {
                 localStorage.removeItem("user_authenticated");
-                router.push("/");
+                localStorage.removeItem("user_id");
+                localStorage.removeItem("user_email");
+                localStorage.removeItem("user_name");
+                localStorage.removeItem("dashboard_selected_workspace_id");
+                router.push("/login");
               }
             }}
             className="h-7 w-7 rounded-full bg-[#fde3cf] text-[#f56a00] flex items-center justify-center font-bold text-xs shadow-inner cursor-pointer select-none hover:opacity-85 transition-opacity"
@@ -662,14 +672,13 @@ export default function DashboardPage() {
                 </button>
                 <button
                   onClick={() => setActiveDashboardTab("flow")}
-                  className={`pb-2 border-b-2 transition-colors flex items-center gap-0.5 ${
+                  className={`pb-2 border-b-2 transition-colors ${
                     activeDashboardTab === "flow"
                       ? "border-gray-900 text-gray-900 font-bold"
                       : "border-transparent hover:text-gray-800"
                   }`}
                 >
                   Flow
-                  <span className="bg-blue-50 text-blue-600 text-[8px] px-1 rounded font-bold uppercase tracking-wider scale-90">Demo</span>
                 </button>
               </div>
             )}
@@ -823,23 +832,13 @@ export default function DashboardPage() {
           </div>
 
 
-          {/* Ask Typeform AI Gradient Input Block */}
+          {/* Coming Soon AI Footer */}
           {sidebarOpen && (
-            <div className="p-3 border-t border-gray-200/40 bg-white">
-              <div className="relative flex items-center rounded-xl p-[1px] bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">
-                <div className="flex items-center w-full bg-white rounded-[11px] px-3 py-2">
-                  <span className="text-gray-400 text-sm mr-2 select-none">🎙️</span>
-                  <input
-                    type="text"
-                    placeholder="Ask FormNest AI"
-                    className="flex-1 bg-transparent text-xs text-gray-700 outline-none placeholder-gray-400"
-                  />
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <svg className="w-3.5 h-3.5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
-                </div>
+            <div className="p-3 border-t border-gray-200/40 bg-white flex items-center justify-center">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 border border-gray-200">
+                <span className="text-gray-400 text-xs select-none">🤖</span>
+                <span className="text-[10px] font-bold text-gray-400 tracking-wide">AI Assistant</span>
+                <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full uppercase tracking-widest">Coming Soon</span>
               </div>
             </div>
           )}
@@ -950,14 +949,6 @@ export default function DashboardPage() {
                 Invite
               </button>
 
-              {/* Settings button */}
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="h-8 w-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-500 shadow-xs"
-                title="Workspace Settings"
-              >
-                🛡️
-              </button>
             </div>
 
             {/* Sorting & view mode selectors */}

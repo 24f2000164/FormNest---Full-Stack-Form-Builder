@@ -16,6 +16,8 @@ class Creator(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, default="Default Creator")
+    email = Column(String, nullable=True, unique=True, index=True)
+    password_hash = Column(String, nullable=True)
 
     forms = relationship("Form", back_populates="creator")
     workspaces = relationship("Workspace", back_populates="owner")

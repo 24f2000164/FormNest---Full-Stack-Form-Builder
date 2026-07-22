@@ -1,10 +1,10 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app import models, schemas
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/forms", tags=["forms"])
@@ -18,22 +18,40 @@ class FormCopyPayload(BaseModel):
     workspace_id: int
 
 
+def extract_user_id(x_user_id: Optional[str], authorization: Optional[str]) -> int:
+    uid_str = x_user_id
+    if not uid_str and authorization and authorization.startswith("Bearer "):
+        uid_str = authorization.replace("Bearer ", "").strip()
+    if uid_str:
+        try:
+            return int(uid_str)
+        except ValueError:
+            pass
+    return 1
+
+
 @router.post("", response_model=schemas.FormRead, status_code=201)
-def create_form(payload: schemas.FormCreate, db: Session = Depends(get_db)):
+def create_form(
+    payload: schemas.FormCreate,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
     """Creates a new blank draft form, assigned to the selected workspace."""
+    user_id = extract_user_id(x_user_id, authorization)
     ws_id = payload.workspace_id
     if not ws_id:
-        default_ws = db.query(models.Workspace).order_by(models.Workspace.id.asc()).first()
+        default_ws = db.query(models.Workspace).filter(models.Workspace.owner_id == user_id).order_by(models.Workspace.id.asc()).first()
         if default_ws:
             ws_id = default_ws.id
         else:
-            default_ws = models.Workspace(name="My workspace", owner_id=1)
+            default_ws = models.Workspace(name="My workspace", owner_id=user_id)
             db.add(default_ws)
             db.flush()
             ws_id = default_ws.id
 
     form = models.Form(
-        creator_id=1,
+        creator_id=user_id,
         title=payload.title or "New form",
         description=payload.description,
         status="draft",
