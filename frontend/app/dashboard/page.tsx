@@ -451,7 +451,11 @@ export default function DashboardPage() {
 
   // Handle Invite Workspace User
   async function handleInviteUser() {
-    if (!selectedWorkspaceId) return;
+    console.log("handleInviteUser clicked. Workspace ID:", selectedWorkspaceId, "Type:", typeof selectedWorkspaceId);
+    if (!selectedWorkspaceId) {
+      alert("Error: No active workspace selected. Please select a workspace from the left sidebar first.");
+      return;
+    }
     const emailClean = inviteEmail.trim();
     if (!emailClean) {
       alert("Please enter a valid email address.");
