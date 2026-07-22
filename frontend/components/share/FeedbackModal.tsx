@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+// @ts-ignore
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function FeedbackModal({
@@ -10,6 +12,7 @@ export default function FeedbackModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState<number | null>(null);
@@ -17,6 +20,10 @@ export default function FeedbackModal({
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +40,9 @@ export default function FeedbackModal({
     setMessage("");
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-60 flex items-center justify-center p-4">
@@ -182,6 +191,7 @@ export default function FeedbackModal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

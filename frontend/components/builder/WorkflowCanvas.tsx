@@ -124,7 +124,6 @@ export default function WorkflowCanvas({
   questions.forEach((q, i) => {
     const logic = q.settings?.logic || {};
     const rules: any[] = logic.rules || [];
-    let hasOverridingPath = Boolean(logic.alwaysGoTo || logic.otherwise);
 
     rules.forEach((rule: any) => {
       if (rule.action === "go_to" && rule.target) {
@@ -149,7 +148,7 @@ export default function WorkflowCanvas({
       }
     }
 
-    if (!hasOverridingPath && i < questions.length - 1) {
+    if (i < questions.length - 1) {
       connections.push({ fromIdx: i, toIdx: i + 1, isBranch: false });
     }
   });

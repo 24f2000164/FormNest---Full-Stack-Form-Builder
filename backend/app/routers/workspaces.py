@@ -171,7 +171,8 @@ def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, d
         raise HTTPException(status_code=400, detail="Invalid email address")
 
     # Construct invitation details
-    invite_url = f"http://localhost:3000/invite?workspace_id={workspace_id}&email={email}"
+    frontend_base_url = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+    invite_url = f"{frontend_base_url}/invite?workspace_id={workspace_id}&email={email}"
     
     subject = f"Invitation to join workspace '{ws.name}' on FormNest"
     body = f"""
@@ -193,11 +194,11 @@ def invite_user(workspace_id: int, invite_req: schemas.WorkspaceInviteRequest, d
     """
 
     # Read SMTP credentials
-    smtp_host = os.environ.get("SMTP_HOST")
-    smtp_port = os.environ.get("SMTP_PORT")
-    smtp_user = os.environ.get("SMTP_USERNAME")
-    smtp_pass = os.environ.get("SMTP_PASSWORD")
-    smtp_from = os.environ.get("SMTP_FROM_EMAIL", "no-reply@formnest.com")
+    smtp_host = os.environ.get("SMTP_HOST") or os.environ.get("MAIL_SERVER")
+    smtp_port = os.environ.get("SMTP_PORT") or os.environ.get("MAIL_PORT")
+    smtp_user = os.environ.get("SMTP_USERNAME") or os.environ.get("MAIL_USERNAME")
+    smtp_pass = os.environ.get("SMTP_PASSWORD") or os.environ.get("MAIL_PASSWORD")
+    smtp_from = os.environ.get("SMTP_FROM_EMAIL") or os.environ.get("MAIL_DEFAULT_SENDER") or "no-reply@formnest.com"
     smtp_from_name = os.environ.get("SMTP_FROM_NAME", "FormNest")
     smtp_use_tls = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
 

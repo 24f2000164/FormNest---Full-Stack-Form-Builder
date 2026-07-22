@@ -68,6 +68,8 @@ export default function DashboardPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [actionFormId, setActionFormId] = useState<number | null>(null);
 
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"forms" | "contacts" | "automations" | "flow">("forms");
+
   // Other UI States
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -624,10 +626,44 @@ export default function DashboardPage() {
             {/* Navigation Tabs (Forms, Contacts, Automations, Research Flow) */}
             {sidebarOpen && (
               <div className="px-4 py-2 border-b border-gray-200/60 flex gap-4 text-xs font-semibold text-gray-500">
-                <button className="pb-2 border-b-2 border-gray-900 text-gray-900 font-bold">Forms</button>
-                <button className="pb-2 border-b-2 border-transparent hover:text-gray-800 transition-colors">Contacts</button>
-                <button className="pb-2 border-b-2 border-transparent hover:text-gray-800 transition-colors">Automations</button>
-                <button className="pb-2 border-b-2 border-transparent hover:text-gray-800 transition-colors flex items-center gap-0.5">
+                <button
+                  onClick={() => setActiveDashboardTab("forms")}
+                  className={`pb-2 border-b-2 transition-colors ${
+                    activeDashboardTab === "forms"
+                      ? "border-gray-900 text-gray-900 font-bold"
+                      : "border-transparent hover:text-gray-800"
+                  }`}
+                >
+                  Forms
+                </button>
+                <button
+                  onClick={() => setActiveDashboardTab("contacts")}
+                  className={`pb-2 border-b-2 transition-colors ${
+                    activeDashboardTab === "contacts"
+                      ? "border-gray-900 text-gray-900 font-bold"
+                      : "border-transparent hover:text-gray-800"
+                  }`}
+                >
+                  Contacts
+                </button>
+                <button
+                  onClick={() => setActiveDashboardTab("automations")}
+                  className={`pb-2 border-b-2 transition-colors ${
+                    activeDashboardTab === "automations"
+                      ? "border-gray-900 text-gray-900 font-bold"
+                      : "border-transparent hover:text-gray-800"
+                  }`}
+                >
+                  Automations
+                </button>
+                <button
+                  onClick={() => setActiveDashboardTab("flow")}
+                  className={`pb-2 border-b-2 transition-colors flex items-center gap-0.5 ${
+                    activeDashboardTab === "flow"
+                      ? "border-gray-900 text-gray-900 font-bold"
+                      : "border-transparent hover:text-gray-800"
+                  }`}
+                >
                   Flow
                   <span className="bg-blue-50 text-blue-600 text-[8px] px-1 rounded font-bold uppercase tracking-wider scale-90">Demo</span>
                 </button>
@@ -805,8 +841,43 @@ export default function DashboardPage() {
           )}
         </aside>
 
-        {/* 3. MAIN CONTENT WORKSPACE VIEW */}
-        <main className="flex-1 flex flex-col min-w-0 bg-white overflow-y-auto">
+        <main className="flex-1 flex flex-col min-w-0 bg-white overflow-y-auto relative">
+          {activeDashboardTab !== "forms" && (
+            <div className="absolute inset-0 bg-gray-50/70 backdrop-blur-[2px] flex items-center justify-center z-50">
+              {/* Webpage shape coming soon placeholder */}
+              <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-lg p-8 text-center space-y-4 relative">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                  {activeDashboardTab === "contacts" && (
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                  )}
+                  {activeDashboardTab === "automations" && (
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                  {activeDashboardTab === "flow" && (
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                  )}
+                </div>
+                <h2 className="text-base font-bold text-gray-900 capitalize">
+                  {activeDashboardTab} Feature
+                </h2>
+                <p className="text-xs text-gray-405 font-semibold max-w-[260px] mx-auto leading-relaxed">
+                  We are working hard to build this. Soon you will be able to manage your form contacts, map responses, and trigger custom workflows automatically here.
+                </p>
+                <div className="pt-2 flex justify-center">
+                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg px-3 py-1 text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider select-none">
+                    Coming Soon
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Header section */}
           <header className="px-8 py-5 border-b border-gray-150 flex items-center justify-between bg-white relative z-40">
             <div className="flex items-center gap-3">
